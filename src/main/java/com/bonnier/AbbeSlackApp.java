@@ -2,18 +2,21 @@ package com.bonnier;
 
 import com.slack.api.bolt.App;
 import com.slack.api.bolt.jetty.SlackAppServer;
-import com.slack.api.methods.request.auth.AuthTestRequest;
 import com.slack.api.methods.response.chat.ChatPostMessageResponse;
 import com.slack.api.methods.response.chat.ChatUpdateResponse;
-import com.slack.api.model.block.DividerBlock;
-import com.slack.api.model.block.LayoutBlock;
-import com.slack.api.model.block.RichTextBlock;
 import com.slack.api.model.event.MessageEvent;
 import com.slack.api.model.event.ReactionAddedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.List;
+import static com.slack.api.model.block.Blocks.actions;
+import static com.slack.api.model.block.Blocks.asBlocks;
+import static com.slack.api.model.block.Blocks.divider;
+import static com.slack.api.model.block.Blocks.section;
+import static com.slack.api.model.block.composition.BlockCompositions.markdownText;
+import static com.slack.api.model.block.composition.BlockCompositions.plainText;
+import static com.slack.api.model.block.element.BlockElements.asElements;
+import static com.slack.api.model.block.element.BlockElements.button;
 
 public class AbbeSlackApp {
     public static void main(String[] args) throws Exception {
@@ -23,6 +26,24 @@ public class AbbeSlackApp {
 
         app.command("/sake", (req, ctx) -> {
             return ctx.ack("No drinking when :skier: !");
+        });
+
+        app.blockAction("button1", (req, ctx) -> {
+            String value = req.getPayload().getActions().get(0).getValue(); // "button's value"
+            if (req.getPayload().getResponseUrl() != null) {
+                // Post a message to the same channel if it's a block in a message
+                ctx.respond("You've sent " + value + " by clicking the button!");
+            }
+            return ctx.ack();
+        });
+
+        app.blockAction("button2", (req, ctx) -> {
+            String value = req.getPayload().getActions().get(0).getValue(); // "button's value"
+            if (req.getPayload().getResponseUrl() != null) {
+                // Post a message to the same channel if it's a block in a message
+                ctx.respond("You've sent " + value + " by clicking the button!");
+            }
+            return ctx.ack();
         });
 
         app.event(MessageEvent.class, ((messagePayload, eventContext) -> {
@@ -42,7 +63,17 @@ public class AbbeSlackApp {
             ChatPostMessageResponse message = eventContext.client().chatPostMessage(rs -> rs
                     .channel(messagePayload.getEvent().getChannel())
                     .threadTs(messagePayload.getEvent().getTs())
-                    .blocks(List.of(new DividerBlock())));
+                    .blocks(asBlocks(
+                            section(section -> section.text(markdownText("*Please select a restaurant:*"))),
+                            divider(),
+                            actions(actions -> actions
+                                    .elements(asElements(
+                                            button(b -> b.text(plainText(pt -> pt.emoji(true).text("Farmhouse"))).actionId("button1").value("v1")),
+                                            button(b -> b.text(plainText(pt -> pt.emoji(true).text("Kin Khao"))).actionId("button2").value("v2"))
+                                    ))
+                            )
+                    )));
+                    //.blocks(List.of(new DividerBlock())));
                     //.text("Här är ett svar!"));
             logger.info(message.getError());
             logger.info("MessageText = " + text);
